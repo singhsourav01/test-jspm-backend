@@ -8,10 +8,10 @@ router.get("/schools/simple", SchoolController.getAllSchoolsSimple);
 router.get("/schools/slug/:slug", SchoolController.getSchoolBySlug);
 
 // CRUD Operations
-router.post("/schools", SchoolController.createSchool);
+router.post("/school", SchoolController.createSchool);
 router.get("/schools", SchoolController.getSchools);
-router.get("/schools/:id", SchoolController.getSchoolById);
-router.patch("/schools/:id", SchoolController.updateSchool);
-router.delete("/schools/:id", SchoolController.deleteSchool);
+router.get("/school/:id", SchoolController.getSchoolById);
+router.patch("/school/:id", SchoolController.updateSchool);
+router.delete("/school/:id", SchoolController.deleteSchool);
 
 export default router;

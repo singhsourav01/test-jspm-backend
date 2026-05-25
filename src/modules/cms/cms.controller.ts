@@ -98,7 +98,7 @@ export class CmsController {
       const validCategory = category.toUpperCase() as PageCategory;
 
       if (
-        !["HOME", "ABOUT_US", "ACADEMICS", "RESEARCH", "ADMISSION"].includes(
+        !["HOME", "SCHOOL"].includes(
           validCategory,
         )
       ) {

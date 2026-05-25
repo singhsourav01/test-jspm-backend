@@ -12,11 +12,11 @@ router.get("/nav/:category", CmsController.getPageHierarchyByCategory);
 router.get("/pages/normal", CmsController.getNormalPages);
 
 // CRUD Operations (Protected)
-router.post("/pages", CmsController.createPage);
+router.post("/page", CmsController.createPage);
 router.get("/pages", CmsController.getPages);
-router.get("/pages/:id", CmsController.getPageById);
-router.patch("/pages/:id", CmsController.updatePage);
-router.delete("/pages/:id", CmsController.deletePage);
+router.get("/page/:id", CmsController.getPageById);
+router.patch("/page/:id", CmsController.updatePage);
+router.delete("/page/:id", CmsController.deletePage);
 
 // Utility Operations
 router.put("/pages/reorder", CmsController.reorderPages);

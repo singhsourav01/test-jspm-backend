@@ -12,7 +12,8 @@ export const CreatePageSchema = z.object({
   pageName: z.string().min(1).max(255),
   section: z.enum(["MAIN", "SCHOOL"]),
   parentId: cleanUuidField.optional(),
-  subParentId: cleanUuidField.optional(),
+  slug: z.string().max(255),
+  pageOrder: z.number().int(),
   pageType: z.enum(["TOP", "NONE"]).default("NONE"),
   contentType: z.enum(["CONTENT_PAGE", "URL"]).default("CONTENT_PAGE"),
   externalUrl: z.string().url().nullable().optional(),
@@ -23,7 +24,7 @@ export const CreatePageSchema = z.object({
   target: z.enum(["SELF", "NEW"]).default("SELF"),
   schoolId: cleanUuidField.optional(),
   category: z
-    .enum(["HOME", "ABOUT_US", "ACADEMICS", "RESEARCH", "ADMISSION", "NORMAL"])
+    .enum(["HOME", "SCHOOL", "NORMAL"])
     .default("NORMAL"),
 });
 
@@ -31,7 +32,6 @@ export const UpdatePageSchema = z.object({
   pageName: z.string().min(1).max(255).optional(),
   section: z.enum(["MAIN", "SCHOOL"]).optional(),
   parentId: cleanUuidField.optional(),
-  subParentId: cleanUuidField.optional(),
   pageType: z.enum(["TOP", "NONE"]).optional(),
   contentType: z.enum(["CONTENT_PAGE", "URL"]).optional(),
   externalUrl: z.string().url().nullable().optional(),
@@ -42,7 +42,7 @@ export const UpdatePageSchema = z.object({
   target: z.enum(["SELF", "NEW"]).optional(),
   schoolId: cleanUuidField.optional(),
   category: z
-    .enum(["HOME", "ABOUT_US", "ACADEMICS", "RESEARCH", "ADMISSION", "NORMAL"])
+    .enum(["HOME", "SCHOOL", "NORMAL"])
     .optional(),
   pageOrder: z.number().int().min(0).optional(),
 });
@@ -53,7 +53,7 @@ export const PageQuerySchema = z.object({
   section: z.enum(["MAIN", "SCHOOL"]).optional(),
   schoolId: z.string().uuid().optional(),
   category: z
-    .enum(["HOME", "ABOUT_US", "ACADEMICS", "RESEARCH", "ADMISSION", "NORMAL"])
+    .enum(["HOME", "SCHOOL", "NORMAL"])
     .optional(),
   parentId: z.string().uuid().optional(),
   pageType: z.enum(["TOP", "NONE"]).optional(),

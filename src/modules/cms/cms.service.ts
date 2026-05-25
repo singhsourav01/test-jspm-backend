@@ -13,6 +13,63 @@ import { Prisma, PageCategory } from "@prisma/client";
 export class CmsService {
   // Create a new page
   static async createPage(data: CreatePageDTO) {
+    // ─── Case 1 & 2: TOP pages (Home / School root pages) ───
+    // page_type = TOP, parent_id = null, school_id = null/empty
+    if (data.pageType === "TOP") {
+      // TOP pages must be root-level (no parent)
+      if (data.parentId) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "TOP pages cannot have a parent. They must be root-level pages.",
+        );
+      }
+
+      // TOP pages must not have a school_id
+      if (data.schoolId) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "TOP pages cannot be assigned to a school. Set schoolId to null or empty.",
+        );
+      }
+
+      // TOP pages must be either HOME or SCHOOL category
+      if (data.category !== "HOME" && data.category !== "SCHOOL") {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "TOP pages must have category HOME or SCHOOL.",
+        );
+      }
+
+      // Ensure only one root page per category (HOME / SCHOOL)
+      // const existingRoot = await prisma.cmsPage.findFirst({
+      //   where: {
+      //     pageType: "TOP",
+      //     parentId: null,
+      //     category: data.category,
+      //   },
+      // });
+
+      // if (existingRoot) {
+      //   throw new ApiError(
+      //     StatusCodes.CONFLICT,
+      //     `A root ${data.category} page already exists. Only one TOP-level ${data.category} page is allowed.`,
+      //   );
+      // }
+    }
+
+    // ─── Case 3: NONE pages (Normal pages) ───
+    if (data.pageType === "NONE") {
+      // NONE pages must have category NORMAL
+      if (data.category && data.category !== "NORMAL") {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "Pages with pageType NONE must have category NORMAL.",
+        );
+      }
+      // Force category to NORMAL
+      data.category = "NORMAL";
+    }
+
     // Validate section-specific requirements
     if (data.section === "SCHOOL" && !data.schoolId) {
       throw new ApiError(
@@ -36,16 +93,6 @@ export class CmsService {
           StatusCodes.BAD_REQUEST,
           "Parent page must belong to same section",
         );
-      }
-    }
-
-    // Validate sub-parent exists if provided
-    if (data.subParentId) {
-      const subParent = await prisma.cmsPage.findUnique({
-        where: { id: data.subParentId },
-      });
-      if (!subParent) {
-        throw new ApiError(StatusCodes.NOT_FOUND, "Sub-parent page not found");
       }
     }
 
@@ -75,33 +122,9 @@ export class CmsService {
       );
     }
 
-    // Generate slug
-    const slug = await SlugService.generateSlug(data.pageName, data.schoolId);
-
-    // Calculate page order (append to end)
-    const maxOrder = await prisma.cmsPage.aggregate({
-      where: {
-        parentId: data.parentId || null,
-        section: data.section,
-      },
-      _max: { pageOrder: true },
-    });
-
-    const pageOrder = (maxOrder._max.pageOrder || 0) + 1;
-
     // Create page
     const page = await prisma.cmsPage.create({
-      data: {
-        ...data,
-        slug,
-        pageOrder,
-        parentId: data.parentId || null,
-        subParentId: data.subParentId || null,
-        schoolId: data.schoolId || null,
-        externalUrl: data.externalUrl || null,
-        metaDescription: data.metaDescription || null,
-        metaKeywords: data.metaKeywords || null,
-      },
+      data,
       include: {
         parent: {
           select: { id: true, pageName: true, slug: true, category: true },
@@ -180,7 +203,7 @@ export class CmsService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.cmsPage.count({ where }),
+      prisma.cmsPage.count(),
     ]);
 
     return {
@@ -198,37 +221,42 @@ export class CmsService {
 
   // Get main navigation pages (fixed pages: Home, About Us, etc.)
   static async getMainNavigation() {
-    const navPages = await prisma.cmsPage.findMany({
-      where: {
-        section: "MAIN",
-        category: {
-          not: "NORMAL", // Get all fixed pages
+    const [navPages, count] = await Promise.all([
+      prisma.cmsPage.findMany({
+        where: {
+          section: "MAIN",
+          category: {
+            not: "NORMAL", // Get all fixed pages
+          },
+          parentId: null, // Only root level
         },
-        parentId: null, // Only root level
-      },
-      include: {
-        children: {
-          where: { isPublished: true },
-          include: {
-            children: {
-              where: { isPublished: true },
-              select: {
-                id: true,
-                pageName: true,
-                slug: true,
-                pageType: true,
-                pageOrder: true,
-                category: true,
+        include: {
+          children: {
+            where: { isPublished: true },
+            include: {
+              children: {
+                where: { isPublished: true },
+                select: {
+                  id: true,
+                  pageName: true,
+                  slug: true,
+                  pageType: true,
+                  pageOrder: true,
+                  category: true,
+                },
               },
             },
+            orderBy: { pageOrder: "asc" },
           },
-          orderBy: { pageOrder: "asc" },
         },
-      },
-      orderBy: { pageOrder: "asc" },
-    });
-
-    return navPages;
+        orderBy: { pageOrder: "asc" },
+      }),
+      prisma.cmsPage.count(),
+    ]);
+    return {
+      data: navPages,
+      count,
+    };
   }
 
   // Get normal pages (can be child of fixed nav or standalone)
@@ -464,10 +492,6 @@ export class CmsService {
         slug,
         parentId:
           data.parentId !== undefined ? data.parentId : existingPage.parentId,
-        subParentId:
-          data.subParentId !== undefined
-            ? data.subParentId
-            : existingPage.subParentId,
         schoolId:
           data.schoolId !== undefined ? data.schoolId : existingPage.schoolId,
       },
@@ -499,13 +523,13 @@ export class CmsService {
       throw new ApiError(StatusCodes.NOT_FOUND, "Page not found");
     }
 
-    // Prevent deletion of fixed navigation pages
-    if (page.category !== "NORMAL") {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        "Cannot delete fixed navigation pages",
-      );
-    }
+    // // Prevent deletion of fixed navigation pages
+    // if (page.category !== "NORMAL") {
+    //   throw new ApiError(
+    //     StatusCodes.BAD_REQUEST,
+    //     "Cannot delete fixed navigation pages",
+    //   );
+    // }
 
     await prisma.cmsPage.delete({ where: { id } });
 
