@@ -6,6 +6,7 @@ import { StatusCodes } from "http-status-codes";
 // Add this to your existing index.ts
 import CmsRoutes from "./routes/cms.routes";
 import SchoolRoutes from "./routes/school.routes";
+import ContentRoutes from "./routes/content.routes";
 
 // Add after other route registrations
 
@@ -32,6 +33,7 @@ app.use(
 // Public auth routes must be registered before routers that use global authenticate
 app.use("/test", CmsRoutes);
 app.use("/test", SchoolRoutes);
+app.use("/test", ContentRoutes);
 
 app.use((err: ApiError, req: Request, res: Response, next: NextFunction) => {
   console.log(err);

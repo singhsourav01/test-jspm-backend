@@ -34,10 +34,7 @@ enum TargetType {
 
 enum PageCategory {
   HOME
-  ABOUT_US
-  ACADEMICS
-  RESEARCH
-  ADMISSION
+  SCHOOL
   NORMAL
 }
 
@@ -53,6 +50,14 @@ model School {
   pages       CmsPage[]
   
   @@map("schools")
+}
+enum ContentBlockType {
+  TITLE
+  PARAGRAPH
+  RICH_TEXT
+  SINGLE_FILE
+  GRID_TITLE
+  MULTIPLE_IMAGE_GRID
 }
 
 model CmsPage {
@@ -76,12 +81,12 @@ model CmsPage {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  // Self-referential relations for hierarchy
   parent          CmsPage?    @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children        CmsPage[]   @relation("PageHierarchy")
-  
-  // School relation
   school          School?     @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  
+  // Content blocks
+  contentBlocks   PageContentBlock[]
 
   @@index([slug])
   @@index([parentId])
@@ -91,4 +96,67 @@ model CmsPage {
   @@index([pageOrder])
   @@index([category])
   @@map("cms_pages")
+}
+
+model PageContentBlock {
+  id          String           @id @default(uuid())
+  pageId      String           @map("page_id")
+  blockType   ContentBlockType @map("block_type")
+  title       String?          @db.Text
+  content     String?          @db.LongText
+  fileUrl     String?          @map("file_url") @db.Text
+  sortOrder   Int              @default(0) @map("sort_order")
+  isPublished Boolean          @default(true) @map("is_published")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  page        CmsPage              @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  gridItems   GridItem[]
+  imageItems  MultipleImageItem[]
+
+  @@index([pageId])
+  @@index([blockType])
+  @@index([sortOrder])
+  @@map("page_content_blocks")
+}
+
+// For GRID_TITLE type - Simple grid with title and sections
+model GridItem {
+  id              String            @id @default(uuid())
+  blockId         String            @map("block_id")
+  imageName       String?           @map("image_name")
+  imageUrl        String?           @map("image_url") @db.Text
+  designationName String?           @map("designation_name")
+  email           String?
+  sortOrder       Int               @default(0) @map("sort_order")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  contentBlock    PageContentBlock  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([blockId])
+  @@index([sortOrder])
+  @@map("grid_items")
+}
+
+// For MULTIPLE_IMAGE_GRID type - Complex grid with multiple buttons
+model MultipleImageItem {
+  id              String            @id @default(uuid())
+  blockId         String            @map("block_id")
+  imageName       String?           @map("image_name")
+  imageUrl        String?           @map("image_url") @db.Text
+  designationName String?           @map("designation_name")
+  buttonLabel1    String?           @map("button_label_1")
+  buttonLink1     String?           @map("button_link_1") @db.Text
+  buttonLabel2    String?           @map("button_label_2")
+  buttonLink2     String?           @map("button_link_2") @db.Text
+  sortOrder       Int               @default(0) @map("sort_order")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  contentBlock    PageContentBlock  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([blockId])
+  @@index([sortOrder])
+  @@map("multiple_image_items")
 }

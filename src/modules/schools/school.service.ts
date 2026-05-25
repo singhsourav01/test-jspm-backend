@@ -24,11 +24,6 @@ export class SchoolService {
     const slug = await SlugService.generateSchoolSlug(data.name);
 
     // Get the next sequence number
-    const lastSchool = await prisma.school.findFirst({
-      orderBy: { sequance: "desc" },
-      select: { sequance: true },
-    });
-    const nextSequence = (lastSchool?.sequance ?? 0) + 1;
 
     const school = await prisma.school.create({
       data: {
@@ -36,7 +31,6 @@ export class SchoolService {
         slug,
         description: data.description || null,
         isActive: data.isActive,
-        sequance: nextSequence,
       },
       include: {
         _count: {
