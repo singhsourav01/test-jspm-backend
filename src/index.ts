@@ -37,6 +37,19 @@ app.use("/test", ContentRoutes);
 
 app.use((err: ApiError, req: Request, res: Response, next: NextFunction) => {
   console.log(err);
+
+  // Handle Zod validation errors -> 400 with details
+  if (err.name === "ZodError" || (err as any)?.issues) {
+    res.status(400).json({
+      statusCode: 400,
+      data: null,
+      message: "Validation failed",
+      errors: (err as any).issues,
+      success: false,
+    });
+    return;
+  }
+
   return errorHandler(err, req, res, next);
 });
 

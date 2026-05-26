@@ -87,7 +87,6 @@ export class ContentService {
     const contentBlocks = await prisma.pageContentBlock.findMany({
       where: {
         pageId,
-        isPublished: true,
       },
       include: {
         gridItems: {
