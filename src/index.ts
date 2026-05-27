@@ -7,8 +7,7 @@ import { StatusCodes } from "http-status-codes";
 import CmsRoutes from "./routes/cms.routes";
 import SchoolRoutes from "./routes/school.routes";
 import ContentRoutes from "./routes/content.routes";
-
-// Add after other route registrations
+import FileRoutes from "./routes/file.routes";
 
 config();
 
@@ -34,6 +33,7 @@ app.use(
 app.use("/test", CmsRoutes);
 app.use("/test", SchoolRoutes);
 app.use("/test", ContentRoutes);
+app.use("/test", FileRoutes);
 
 app.use((err: ApiError, req: Request, res: Response, next: NextFunction) => {
   console.log(err);

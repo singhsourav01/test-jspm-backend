@@ -4,6 +4,7 @@ import { z } from "zod";
 export const GridItemSchema = z.object({
   imageName: z.string().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
+  fileId: z.string().uuid().optional().nullable(),
   designationName: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   sortOrder: z.number().int().default(0),
@@ -13,6 +14,7 @@ export const GridItemSchema = z.object({
 export const MultipleImageItemSchema = z.object({
   imageName: z.string().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
+  fileId: z.string().uuid().optional().nullable(),
   designationName: z.string().optional().nullable(),
   buttonLabel1: z.string().optional().nullable(),
   buttonLink1: z.string().url().optional().nullable(),
@@ -35,6 +37,7 @@ export const CreateContentBlockSchema = z.object({
   title: z.string().optional().nullable(),
   content: z.string().optional().nullable(),
   fileUrl: z.string().url().optional().nullable(),
+  fileId: z.string().uuid().optional().nullable(),
   sortOrder: z.number().int().default(0),
   isPublished: z.boolean().default(true),
   gridItems: z.array(GridItemSchema).optional(),
@@ -56,6 +59,7 @@ export const UpdateContentBlockSchema = z.object({
   title: z.string().optional().nullable(),
   content: z.string().optional().nullable(),
   fileUrl: z.string().url().optional().nullable(),
+  fileId: z.string().uuid().optional().nullable(),
   sortOrder: z.number().int().optional(),
   isPublished: z.boolean().optional(),
   gridItems: z.array(GridItemSchema).optional(),

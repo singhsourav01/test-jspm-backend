@@ -3,10 +3,66 @@ import { StatusCodes } from "http-status-codes";
 import prisma from "../../config/prisma.config";
 import { CreateContentBlockDTO, UpdateContentBlockDTO } from "./content.dto";
 
+type FileMap = Record<
+  string,
+  {
+    id: string;
+    fileUploadType: string;
+    fileMediaType: string;
+    fileUrl: string;
+    fileThumbnail: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }
+>;
+
+async function resolveFileData(blocks: any[]): Promise<any[]> {
+  const fileIds = new Set<string>();
+
+  for (const block of blocks) {
+    if (block.fileId) fileIds.add(block.fileId);
+    for (const item of block.gridItems || []) {
+      if (item.fileId) fileIds.add(item.fileId);
+    }
+    for (const item of block.imageItems || []) {
+      if (item.fileId) fileIds.add(item.fileId);
+    }
+  }
+
+  const fileMap: FileMap = {};
+
+  if (fileIds.size > 0) {
+    const files = await prisma.file.findMany({
+      where: { id: { in: Array.from(fileIds) }, fileIsDelete: false },
+    });
+    for (const file of files) {
+      fileMap[file.id] = file;
+    }
+  }
+
+  console.log(fileMap, " here is fileMap");
+  return blocks.map((block) => {
+    const b = { ...block };
+    b.file = b.fileId ? fileMap[b.fileId] || null : null;
+    if (b.gridItems) {
+      b.gridItems = b.gridItems.map((item: any) => ({
+        ...item,
+        file: item.fileId ? fileMap[item.fileId] || null : null,
+      }));
+    }
+    if (b.imageItems) {
+      b.imageItems = b.imageItems.map((item: any) => ({
+        ...item,
+        file: item.fileId ? fileMap[item.fileId] || null : null,
+      }));
+    }
+    return b;
+  });
+}
+
 export class ContentService {
   // Create content block for a page
   static async createContentBlock(data: CreateContentBlockDTO) {
-    // Verify page exists
     const page = await prisma.cmsPage.findUnique({
       where: { id: data.pageId },
     });
@@ -15,7 +71,6 @@ export class ContentService {
       throw new ApiError(StatusCodes.NOT_FOUND, "Page not found");
     }
 
-    // Create content block with optional grid items
     const contentBlock = await prisma.pageContentBlock.create({
       data: {
         pageId: data.pageId,
@@ -23,28 +78,29 @@ export class ContentService {
         title: data.title || null,
         content: data.content || null,
         fileUrl: data.fileUrl || null,
+        fileId: data.fileId || null,
         sortOrder: data.sortOrder,
         isPublished: data.isPublished,
-        // Create grid items if block type is GRID_TITLE
         gridItems:
           data.gridItems && data.blockType === "GRID_TITLE"
             ? {
                 create: data.gridItems.map((item) => ({
                   imageName: item.imageName || null,
                   imageUrl: item.imageUrl || null,
+                  fileId: item.fileId || null,
                   designationName: item.designationName || null,
                   email: item.email || null,
                   sortOrder: item.sortOrder,
                 })),
               }
             : undefined,
-        // Create image items if block type is MULTIPLE_IMAGE_GRID
         imageItems:
           data.imageItems && data.blockType === "MULTIPLE_IMAGE_GRID"
             ? {
                 create: data.imageItems.map((item) => ({
                   imageName: item.imageName || null,
                   imageUrl: item.imageUrl || null,
+                  fileId: item.fileId || null,
                   designationName: item.designationName || null,
                   buttonLabel1: item.buttonLabel1 || null,
                   buttonLink1: item.buttonLink1 || null,
@@ -65,7 +121,8 @@ export class ContentService {
       },
     });
 
-    return contentBlock;
+    const resolved = await resolveFileData([contentBlock]);
+    return resolved[0];
   }
 
   // Get all content blocks for a page
@@ -85,9 +142,7 @@ export class ContentService {
     }
 
     const contentBlocks = await prisma.pageContentBlock.findMany({
-      where: {
-        pageId,
-      },
+      where: { pageId },
       include: {
         gridItems: {
           orderBy: { sortOrder: "asc" },
@@ -99,9 +154,11 @@ export class ContentService {
       orderBy: { sortOrder: "asc" },
     });
 
+    const resolved = await resolveFileData(contentBlocks);
+
     return {
       page,
-      contentBlocks,
+      contentBlocks: resolved,
     };
   }
 
@@ -139,9 +196,11 @@ export class ContentService {
       orderBy: { sortOrder: "asc" },
     });
 
+    const resolved = await resolveFileData(contentBlocks);
+
     return {
       page,
-      contentBlocks,
+      contentBlocks: resolved,
     };
   }
 
@@ -155,14 +214,12 @@ export class ContentService {
       throw new ApiError(StatusCodes.NOT_FOUND, "Content block not found");
     }
 
-    // Delete existing grid items if updating
     if (data.gridItems) {
       await prisma.gridItem.deleteMany({
         where: { blockId: id },
       });
     }
 
-    // Delete existing image items if updating
     if (data.imageItems) {
       await prisma.multipleImageItem.deleteMany({
         where: { blockId: id },
@@ -176,6 +233,7 @@ export class ContentService {
         title: data.title,
         content: data.content,
         fileUrl: data.fileUrl,
+        fileId: data.fileId,
         sortOrder: data.sortOrder,
         isPublished: data.isPublished,
         gridItems: data.gridItems
@@ -183,6 +241,7 @@ export class ContentService {
               create: data.gridItems.map((item) => ({
                 imageName: item.imageName || null,
                 imageUrl: item.imageUrl || null,
+                fileId: item.fileId || null,
                 designationName: item.designationName || null,
                 email: item.email || null,
                 sortOrder: item.sortOrder,
@@ -194,6 +253,7 @@ export class ContentService {
               create: data.imageItems.map((item) => ({
                 imageName: item.imageName || null,
                 imageUrl: item.imageUrl || null,
+                fileId: item.fileId || null,
                 designationName: item.designationName || null,
                 buttonLabel1: item.buttonLabel1 || null,
                 buttonLink1: item.buttonLink1 || null,
@@ -214,7 +274,8 @@ export class ContentService {
       },
     });
 
-    return updatedBlock;
+    const resolved = await resolveFileData([updatedBlock]);
+    return resolved[0];
   }
 
   // Delete content block

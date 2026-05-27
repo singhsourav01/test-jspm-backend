@@ -105,6 +105,7 @@ model PageContentBlock {
   title       String?          @db.Text
   content     String?          @db.LongText
   fileUrl     String?          @map("file_url") @db.Text
+  fileId      String?          @map("file_id")
   sortOrder   Int              @default(0) @map("sort_order")
   isPublished Boolean          @default(true) @map("is_published")
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -113,9 +114,11 @@ model PageContentBlock {
   page        CmsPage              @relation(fields: [pageId], references: [id], onDelete: Cascade)
   gridItems   GridItem[]
   imageItems  MultipleImageItem[]
+  file        File?                @relation(fields: [fileId], references: [id], onDelete: SetNull)
 
   @@index([pageId])
   @@index([blockType])
+  @@index([fileId])
   @@index([sortOrder])
   @@map("page_content_blocks")
 }
@@ -126,6 +129,7 @@ model GridItem {
   blockId         String            @map("block_id")
   imageName       String?           @map("image_name")
   imageUrl        String?           @map("image_url") @db.Text
+  fileId          String?           @map("file_id")
   designationName String?           @map("designation_name")
   email           String?
   sortOrder       Int               @default(0) @map("sort_order")
@@ -133,8 +137,10 @@ model GridItem {
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
   contentBlock    PageContentBlock  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  file            File?             @relation(fields: [fileId], references: [id], onDelete: SetNull)
 
   @@index([blockId])
+  @@index([fileId])
   @@index([sortOrder])
   @@map("grid_items")
 }
@@ -145,6 +151,7 @@ model MultipleImageItem {
   blockId         String            @map("block_id")
   imageName       String?           @map("image_name")
   imageUrl        String?           @map("image_url") @db.Text
+  fileId          String?           @map("file_id")
   designationName String?           @map("designation_name")
   buttonLabel1    String?           @map("button_label_1")
   buttonLink1     String?           @map("button_link_1") @db.Text
@@ -155,8 +162,29 @@ model MultipleImageItem {
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
   contentBlock    PageContentBlock  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  file            File?             @relation(fields: [fileId], references: [id], onDelete: SetNull)
 
   @@index([blockId])
+  @@index([fileId])
   @@index([sortOrder])
   @@map("multiple_image_items")
+}
+
+model File {
+  id              String               @id @default(uuid())
+  fileUploadType  String               @map("file_upload_type")
+  fileIsDelete    Boolean              @default(false) @map("file_is_delete")
+  fileMediaType   String               @map("file_media_type")
+  fileUrl         String               @map("file_url") @db.Text
+  fileThumbnail   String?              @map("file_thumbnail_url") @db.Text
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  contentBlocks   PageContentBlock[]
+  gridItems       GridItem[]
+  imageItems      MultipleImageItem[]
+
+  @@index([fileUploadType])
+  @@index([fileIsDelete])
+  @@map("files")
 }
